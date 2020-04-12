@@ -1,0 +1,127 @@
+Insurnace policy table 
+ps file 
+x(5)  x(10)       a(25)                a(10)   a(7)  9(10)     a(100)
+M1011 MED100001Q jeevan Rakzha policy medical  qly  1000000000 it will cover health benifits 
+c1011 chi100001q child policy                  monthly 5000000   it will cover all child insurance  
+a1011 aci100001q accident policy     accident yEARLY  45000     ACCIDENT benifits 
+database table 
+policyid policycode policyname typeofpolicy term    policyamt benifitoffers 
+ char(5)  char(10)  char(25)   char(10)    char(7)  num(10) int   char(100)
+CREATE TABLE POLICY (POLICYID CHAR(5) NOT NULL,POLICYCODE CHAR(10) NOT NULL,POLICYNAME CHAR(25) NOT NULL,
+                     CHAR(10) NOT NULL, TERM CHAR(7) NOT NULL, POLICYAMT INT, BENIFITOFFERS CHAR(100) NOT NULL) IN
+                     DBTKOL1;
+Agent table 
+ps file 
+x(5)   x(10)     x(10)     a(7)        9(10)      9(2)      a(25)  
+4278A MED100001Q R.Rajesh  Qly         1000000000 10        B.com 
+data base table 
+Agentcode policycode Agentname term    Policyamt commision  educationalqualification
+char(5)   char(10)   char(10)  char(7)   num(10)  num(2)small int     char(25) 
+
+CREATE TABLE AGENT(AGENTCODE CHAR(5) NOT NULL, POLICYCODE CHAR(10) NOT NULL,AGENTNAME CHAR(10), TERM CHAR(7),
+                   POLICYAMT INT,COMMISION SMALLINT,EDUCATIONALQUALIFICATION CHAR(25)) IN DBTKOL1;
+
+
+
+IDENTIFICATION DIVISION.
+PROGRAM-ID.   CA11P001.
+
+ENVIRONMENT DIVISION.
+INPUT-OUTPUT SECTION.
+FILE CONTROL.
+     SELECT INPUFILE1 ASSIGN TO INPDD
+     ORGANIZATION IS SEQUENTIAL
+     ACESS   IS SEQUENTIAL     
+     FILE STATUS IS WS-FS1.
+     
+     SELECT INPUTFILE2 ASSIGN TO INPDD1
+     ORGANIZATION IS SEQUENTIAL
+     ACESS   IS SEQUENTIAL     
+     FILE STATUS IS WS-FS2.
+DATA DIVISION.
+FILE SECTION.
+FD INPUTFILE1.
+01 INPUT-POL.
+   05 POLICYID     PIC X(5).
+   05 FILLER       PIC X(1).
+   05 POLICYCODE   PIC X(10).
+   05 FILLER       PIC X(1).
+   05 POLICYNAME   PIC A(25).
+   05 FILLER       PIC X(1).
+   05 POLICYTYPE   PIC A(10).
+   05 FILLER       PIC X(1).
+   05 TERM         PIC A(7).
+   05 FILLER       PIC X(1).  
+   05 POLICYAMT    PIC 9(10).
+   05 FILLER       PIC X(1).
+   05 BENIFIOFFERS PIC A(100).
+   
+FD INPUFILE2.
+01 INPUT-AGENT.
+   05 AGENTCODE    PIC X(5).
+   05 FILLER       PIC X(1).
+   05 POLICYCODE   PIC X(10).
+   05 FILLER       PIC X(1).
+   05 AGENTNAME    PIC X(10).
+   05 FILLER       PIC X(1)
+   05 TERM         PIC A(7).
+   05 FILLER       PIC X(1).
+   05 POLICYAMT    PIC 9(10).
+   05 FILLER       PIC X(1).
+   05 COMMISION    PIC 9(2).
+   05 FILLER       PIC X(1).
+   05 EDUCATION    PIC X(25).
+   
+WORKING-STORAGE SECTION.
+01 WS-FS1          PIC X(2).
+   88  FS1-SUC     VALUE '00'.
+   88  FS1-EOF     VALUE '10'.
+01 WS-FS2          PIC X(2).
+   88 FS2-SUC      VALUE '00'.
+   88 FS2-EOF      VALUE '10.
+01 ERR-MSG.
+   05 ERR-LEN      PIC S9(4) COMP VALUE 800.
+   05 ERR-TEXT     PIC X(80) OCCURS 10 TIMES.
+01 ERR-TEXT-LEN    PIC S9(9) COMP VALUE 80.
+EXEC SQL
+       INCLUDE SQLCA
+   END-EXEC.
+   EXEC SQL
+       INCLUDE POL
+   END-EXEC.
+   EXEC SQL
+       INCLUDE AGENT
+   END-EXEC.
+PROCEDURE DIVISION.
+0000-MAIN-PARA.
+    PERFORM 1000-OPEN-PARA THRU 1000-OPEN-EXIT.
+    PERFORM 2000-PROCESS-PARA THRU 2000-PROCESS-EXIT.
+    PERFORM 3000-CLOSE-PARA THRU 3000-CLOSE-EXIT.
+    STOP RUN.
+1000-OPEN-PARA.
+    OPEN INPUT INPUTFIL1.
+    OPEN INPUT INPUTFILE2.
+    IF FS1-SUC AND FS2-SUC
+       DISPLAY 'OPEN SUCCESSFULLY BOTH FILES'
+    END-IF.
+1000-OPEN-EXIT.
+    EXIT.
+2000-PROCESS-PARA.
+     PERFORM 2100-READ-PARA THRU 2100-READ-EXIT UNTIL FS1-EOF AND FS2-EOF
+     PERFORM 2200-WRITE-PARA THRU 2200-WRITE-EXIT.
+2000-PROCESS-EXIT.
+    EXIT.
+2100-READ-PARA.
+     
+    
+          
+      
+ 
+
+
+  
+
+
+
+
+
