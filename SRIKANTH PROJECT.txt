@@ -1,0 +1,293 @@
+﻿CHILD INSURANCE POLICY
+****************************************************************
+***********************INPUT PS FILE**************************
+****************************************************************
+-> GO TO ISPF MENU 3.2 OPTION. 
+-> CREATE AGENT PS FILE RECORD LENGTH 80.
+OR
+//TLAB001A	JOB	CLASS=A, NOTIFY=TLAB001
+//STEP001	EXEC	PGM=IEFBR14
+//DD1	        DD	DSN=TLAB001.TRNG.INP,
+//			DISP=(NEW,CATLG),
+//			SPACE=(TRK,(1,1)),
+//			UNIT=SYSDA,
+//			DCB=(LRECL=80,RECFM=FB,BLKSIZE=800,DSORG=PS)
+-> ENTER THE DETAILS 
+AGENT PS FILE STRUCTURE:
+NOTE: ONE SPACE FILTER IS NEEDED.
+AGENTCODE POLICYCODE AGENTNAME TERM   POLICYAMOUNT COMMISION  EDUCATIONQUALIFICATION
+
+  X(5)      X(10)      A(10)    A(7)   9(10)        9(2)       X(25)
+DETAILS EXAMPLE
+4278A MED100001Q RAJESH     QLY     0001000000 10 BCOM
+
+****************************************************************
+*************************VSAM FILE****************************
+****************************************************************
+//TLAB001A JOB  NOTIFY=&SYSUID
+//STEP001  EXEC PGM=IDCAMS
+//SYSPRINT DD   SYSOUT=*
+//SYSIN    DD   *
+   	DELETE TLAB001.ERROR.KSDS 
+    	IF LASTCC > 00 THEN 
+    	SET MAXCC = 00 
+   	DEFINE CLUSTER(NAME(TLAB001.ERROR.KSDS) -
+    	KEYS(5 0) -
+    	FREESPACE(10 20) -
+    	RECORDSIZE(120 120) -
+    	TRACKS(5 5) -
+    	CISZ(4096) -
+    	INDEXED    -
+        ) -
+        DATA (NAME(TLAB001.ERROR.KSDS.DATA) -
+        ) -
+        INDEX (NAME(TLAB001.ERROR.KSDS.INDEX) -
+        )
+/*
+****************************************************************
+*******************DATABASE AS PER BRD11*******************
+****************************************************************
+CREATE TABLE AGENT_DETAIL
+(AGENT_CODE		CHAR(5) NOT NULL PRIMARY KEY,
+POLICY_CODE	 	CHAR(10) NOT NULL,
+AGENT_NAME		CHAR(10) NOT NULL,
+TERM				CHAR(7) NOT NULL CHECK TERM
+  IN(‘MONTLY’,’QLY’,’YEARLY’),
+POLICY_AMOUNT		NUM(10) NOT NULL,
+COMMISSION		NUM(2) NOT NULL,
+EDUCATION		CHAR(25) NOT NULL)
+IN DBTAB01;
+CREATE UNIQUE INDEX AGENT_IND
+ON AGENT_DETAIL(AGENT_CODE);
+****************************************************************
+**********DATA VALIDATION AND ERROR HANDLING**********
+****************************************************************      
+               IDENTIFICATION DIVISION.
+               PROGRAM-ID.  PROJ001.
+              *
+               ENVIRONMENT DIVISION.
+               INPUT-OUTPUT SECTION.
+               FILE-CONTROL.
+                   SELECT INFILE ASSIGN TO INPPS
+                   ORGANIZATION IS SEQUENTIAL
+                   ACCCESS MODE IS SEQUENTIAL
+                   FILE STATUS IS WS-FS1.
+              *   
+                   SELECT ERRFILE ASSIGN TO ERRKSDS
+                   ORGANIZATION IS INDEXED
+                   ACCESS MODE IS SEQUENTIAL
+                   RECORD KEY IS AGENT CODE 
+                   FILE STATUS IS WS-ERR.
+              *
+                DATA DIVISION.
+                FILE SECTION.
+              *
+                FD  INFILE.
+                01 INPUT-AGENT.
+       	           05 AGENTCODE               PIC X(05).
+                   05 FILLER                  PIC X(01).
+                   05 POLICYCODE              PIC X(10).
+                   05 FILLER                  PIC X(01).
+                   05 AGENTNAME               PIC X(10).
+                   05 FILLER                  PIC X(01)
+                   05 TERM-O                  PIC A(07).
+                   05 FILLER                  PIC X(01).
+                   05 POLICYAMT               PIC 9(10).
+                   05 FILLER                  PIC X(01).
+                   05 COMMISION               PIC 9(02).
+                   05 FILLER                  PIC X(01).
+                   05 EDUCATION               PIC X(25).
+                   05 FILLER                  PIC X(5) VALUE ALL SPACES.
+                FD  ERRFILE.
+                01 ERRFILE-RECORD.
+       	               05 AGENTCODE-E	      PIC X(05).
+                       05 FILLER      	      PIC X(01).
+                       05 POLICYCODE-E        PIC X(10).
+                       05 FILLER              PIC X(01).
+                       05 AGENTNAME-E	      PIC X(10).
+                       05 FILLER	      PIC X(01)
+                       05 TERM-E	      PIC A(07).
+                       05 FILLER	      PIC X(01).
+                       05 POLICYAMT-E	      PIC 9(10).
+                       05 FILLER	      PIC X(01).
+                       05 COMMISION-E	      PIC 9(02).
+                       05 FILLER	      PIC X(01).
+                       05 EDUCATION-E	      PIC X(25).
+                       05 FILLER	      PIC X(01).
+                       05 ERRFIELD	      PIC X(20).
+                       05 FILLER	      PIC X(24).
+                WORKING-STORAGE SECTION.
+                01 WS-FS1            PIC X(02).
+                     88 FS1-SUC     VALUE '00'.
+                     88 FS1-EOF     VALUE '10'.
+                01 WS-ERR           PIC X(02).
+                     88 ERR-SUC    VALUE '00'.
+                     88 ERR-EOF    VALUE '10'.
+                01 W-SQLCODE       PIC -9(04).
+                01 W-ERRFIELD      PIC X(20).
+                01 WSS-ERR-MSG.
+                     10 WS-ERR-LEN        PIC S9(4) COMP VALUE 800.
+                     10 WS-ERR-TEXT       PIC X(80) OCCURS 10 TIMES.
+                01  WS-ERR-LRECL      PIC S9(9) COMP VALUE 80.
+                     EXEC SQL
+                          INCLUDE DCL001
+                     END-EXEC.
+                     EXEC SQL 
+                          INCLUDE SQLCA
+                     END-EXEC.
+               *
+                PROCEDURE DIVISION.
+                0000-MAIN-PARA.
+                    PERFORM 1000-OPEN-PARA  THRU 1000-OPEN-PARA-EXIT.
+                    PERFORM 2000-READ-PARA  THRU 2000-READ-PARA-EXIT UNTIL FS1-SUC.
+                    PERFORM 6000-CLOSE-PARA THRU 6000-CLOSE-PARA-EXIT.
+                    STOP RUN.
+                0000-MAIN-PARA-EXIT.
+                EXIT.
+                1000-OPEN-PARA. 
+                    OPEN INPUT INFILE 
+                    IF FS1-SUC
+                       DISPLAY ' INPUT AGENT FILE OPENED’
+                    ELSE
+                       DISPLAY ' OPEN PS FILE ERROR: ' WS-FS1
+                    END-IF.
+                    OPEN OUTPUT ERRFILE 
+                    IF ERR-SUC
+                       DISPLAY 'ERROR FILE OPENED’
+                    ELSE
+                       DISPLAY ' OPEN ERROR FILE ERROR: ' WS-ERR
+                    END-IF.
+                1000-OPEN-PARA-EXIT.
+                    EXIT.
+                2000-READ-PARA.
+                    READ INFILE
+                      IF FS1-SUC
+                          PERFORM 2100-VALID-PARA 
+                      ELSE
+                          DISPLAY ' READ INPUT ERROR: ' WS-FS1
+                     END-IF. 
+                2000-READ-PARA-EXIT.
+                     EXIT.
+                2100-VALID-PARA.
+                     IF AGENTCODE IS NOT ALPHABETIC AND AGENTCODE IS NOT NUMERIC AND
+                        POLICYCODE IS NOT ALPHABETIC AND PLOICYCODE IS NOT NUMERIC AND
+                	AGENTNAME IS ALPHABETIC AND 
+               	        TERM IS ALPHABETIC AND                            
+               	        POLICYAMT IS NUMERIC AND 
+               	        COMMISION IS NUMERIC AND EDUCATION-O IS ALPHABEIC
+                    	DISPLAY 'DATA VALID'
+                     	PERFORM 3000-INSERT-PARA THRU 3000-INSERT-PARA-EXIT
+                     ELSE
+                	DISPLAY 'INVALID DATA'
+                	PERFORM 4100-INVALID-PARA THRU 4100-INVALID-PARA-EXIT
+                     END-IF.
+                2100-VALID-PARA-EXIT.
+                    EXIT.
+                3000-INSERT-PARA.
+                    DISPLAY 'MOVING PS DATA TO TABLE'
+                    MOVE AGENTCODE     TO HV-AGENT_CODE.
+                    MOVE POLICYCODE    TO HV-POLICY_CODE.
+                    MOVE AGENTNAME     TO HV-AGENT_NAME.
+                    MOVE TERM-O        TO HV-TERM.
+                    MOVE POLICYAMT     TO HV-POLICY_AMOUNT.
+                    MOVE COMMISION     TO HV-COMMISION.
+                    MOVE EDUCATION-O   TO HV-EDUCATION.
+                    EXEC SQL 
+                       INSERT INTO AGENT_DETAIL VALUES(:HV-AGENT_CODE ,:HV-POLICY_CODE ,:HV-AGENT_NAME ,:HV-TERM ,:HV-POLICY_AMOUNT ,:HV-COMMISION ,:HV-EDUCATION)
+                    END-EXEC. 
+                    EVALUATE SQLCODE
+                    WHEN 00
+                       DISPLAY 'INSERTION SUCCESSFUL'
+                    WHEN OTHER
+                       MOVE SQLCODE TO W-SQLCODE   
+                       DISPLAY 'INSERTION FAIL' W-SQLCODE
+                       CALL 'DSNTIAR' USING SQLCA WSS-ERR-MSG
+               	       DISPLAY WS-ERR-MSG.
+                       
+                3000-INSERT-PARA-EXIT.
+                    EXIT. 
+                4100-INVALID-PARA.
+                DISPLAY 'ERROR RECORDS ARE WRITTEN INTO ERRFILE'
+                IF AGENTCODE IS ALPHABETIC AND AGENTCODE IS NUMERIC
+                   MOVE 'AGENTCODE' TO W-ERRFIELD
+                END-IF.
+                IF POLICYCODE IS ALPHABETIC AND POLICYCODE IS NUMERIC
+                   MOVE 'POLICYCODE' TO W-ERRFIELD
+                END-IF.
+                IF AGENTNAME IS NOT ALPHABETIC
+                   MOVE 'AGENTNAME' TO W-ERRFIELD
+                END-IF.
+                IF TERM-O IS NOT ALPHABETIC
+                   MOVE 'TERM' TO W-ERRFIELD
+                END-IF.
+                IF POLICYAMT IS NOT NUMERIC
+                   MOVE 'POLICYAMT' TO W-ERRFIELD
+                END-IF.
+                IF COMMISION-O IS NOT NUMERIC
+                   MOVE 'COMMISION' TO W-ERRFIELD
+                END-IF.
+                IF EDUCATION-O IS NOT ALPHABETIC
+                   MOVE 'EDUCATION' TO W-ERRFIELD
+                END-IF.
+                MOVE AGENTCODE      TO AGENTCODE-E.
+                MOVE POLICYCODE     TO POLICYCODE-E.
+                MOVE AGENTNAME      TO AGENTNAME-E.
+                MOVE TERM-O         TO TERM-E.
+                MOVE POLICYAMT      TO POLICYAMT-E.
+                MOVE COMMISION      TO COMMISION-E.
+                MOVE EDUCATION      TO EDUCATION-E. 
+                MOVE W-ERRFIELD     TO ERRFIELD.
+                WRITE ERRFILE-RECORD.      
+                IF ERR-SUC
+                   DISPLAY 'WRITING ERROR RECORDS IS DONE'
+                ELSE
+                   DISPLAY 'WRITE ERROR:' WS-ERR
+                END-IF.
+                4100-INVALID-PARA-EXIT.
+                    EXIT.
+                6000-CLOSE-PARA.
+                DISPLAY 'CLOSE PARA'
+                CLOSE INFILE
+                IF FS1-SUC
+                   DISPLAY ' INPUT AGENT FILE CLOSED'
+                ELSE
+                    DISPLAY ' CLOSE PS FILE ERROR: ' WS-FS1
+                END-IF.
+                CLOSE ERRFILE
+                IF ERR-SUC
+                    DISPLAY 'ERROR FILE CLOSED'
+                ELSE
+                    DISPLAY ' CLOSE ERRFILE ERROR: ' WS-ERR
+                END-IF.
+                6000-CLOSE-PARA-EXIT.
+                    EXIT.
+               
+                
+                        
+****************************************************************
+*******************JCL FOR 7 GDG VERSIONS*******************
+****************************************************************
+JCL FOR 7 GDG VERSIONS
+//TLAB001A	JOB	CLASS=A,
+PRTY=15,
+NOTIFY=&SYSUID
+//STEP005	EXEC	PGM=IDCAMS
+//SYSPRINT	DD	SYSOUT= *
+//SYSIN	DD	*
+DEFINE	GDG(NAME( TLAB001.TRNG.GDG) -
+LIMIT(7)				    -
+SCRATCH				    -
+EMPTY)
+/*
+//STEP010	EXEC	PGM=SORT
+//SYSOUT	DD	SYSOUT=A
+//SORTIN	DD	DSN=TLAB001.TRNG.PS,
+//			DISP=SHR
+//SORTOUT	DD	DSN=TLAB001.TRNG.GDG(+1),
+//			DISP=(NEW,CATLG),
+//			SPACE=(TRK,(1,1)),
+//			UNIT=SYSDA,
+//			DCB=(LRECL=120,RECFM=FB,BLKSIZE=12000)
+//SYSIN		DD	*
+   SORT FIELDS=COPY
+/*
